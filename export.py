@@ -2,14 +2,50 @@
 
 import argparse
 import asana
-from getpass import getpass
 import json
+import os
+import sys
 
+from getpass import getpass
 from pathlib import Path
 
 
-def authorize(token):
-    return asana.Client.access_token(token)
+class AsanaAuthorizationUtil:
+
+    @staticmethod
+    def authorize():
+        client = None
+        if 'ASANA_CLIENT_ID' in os.environ:
+            # create a client with the OAuth credentials:
+            client = asana.Client.oauth(
+                client_id=os.environ['ASANA_CLIENT_ID'],
+                client_secret=os.environ['ASANA_CLIENT_SECRET'],
+                # this special redirect URI will prompt the user to copy/paste the code.
+                # useful for command line scripts and other non-web apps
+                redirect_uri='urn:ietf:wg:oauth:2.0:oob'
+            )
+
+            # get an authorization URL:
+            (url, state) = client.session.authorization_url()
+            try:
+                import webbrowser
+                webbrowser.open(url)
+            except Exception as e:
+                print("Open the following URL in a browser to authorize:")
+                print(url)
+
+            print("Copy and paste the returned code from the browser and press enter:")
+
+            code = sys.stdin.readline().strip()
+            # exchange the code for a bearer token
+            client.session.fetch_token(code=code) #Todo: consider saving and reusing the token
+
+        else:
+            print("Enter your personal access token:")
+            auth_token = getpass()
+            client = asana.Client.access_token(auth_token)
+
+        return client
 
 
 def get_nice_json(object_to_dump):
@@ -25,8 +61,7 @@ class AsanaExporter:
 
         self.destination_path = Path(destination)
 
-        auth_token = getpass()
-        self.client = authorize(auth_token)
+        self.client = AsanaAuthorizationUtil.authorize()
 
         workspaces = list(self.client.workspaces.find_all(expand=["this"]))
         for workspace in workspaces:
