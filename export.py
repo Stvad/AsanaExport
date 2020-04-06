@@ -38,7 +38,7 @@ class AsanaAuthorizationUtil:
 
             code = sys.stdin.readline().strip()
             # exchange the code for a bearer token
-            client.session.fetch_token(code=code) #Todo: consider saving and reusing the token
+            client.session.fetch_token(code=code)  # Todo: consider saving and reusing the token
 
         else:
             print("Enter your personal access token:")
@@ -49,7 +49,7 @@ class AsanaAuthorizationUtil:
 
 
 def get_nice_json(object_to_dump):
-        return json.dumps(object_to_dump, sort_keys=True, indent=2, ensure_ascii=False)
+    return json.dumps(object_to_dump, sort_keys=True, indent=2, ensure_ascii=False)
 
 
 class AsanaExporter:
@@ -75,13 +75,15 @@ class AsanaExporter:
         with metadata_path.open(mode='w', encoding='utf-8') as metadata_file:
             metadata_file.write(get_nice_json(workspace))
 
-        projects = self.client.projects.find_by_workspace(workspace['id'], iterator_type=None, expand=["this"])
+        print("Exporting workspace:", workspace)
+        projects = self.client.projects.find_by_workspace(workspace['gid'], iterator_type=None, expand=["this"])
         for project in projects:
             self.process_project(workspace_path, project)
 
     def process_project(self, base_path, project):
-        project_path = base_path.joinpath(project['name']+'.json')
-        tasks = list(self.client.projects.tasks(project['id'], expand=["this", "subtasks+"]))
+        print("Exporting project:", project)
+        project_path = base_path.joinpath(project['name'] + '.json')
+        tasks = list(self.client.projects.tasks(project['gid'], expand=["this", "subtasks+"]))
         project['tasks'] = tasks
 
         with project_path.open(mode='w', encoding='utf-8') as project_file:
@@ -89,7 +91,6 @@ class AsanaExporter:
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Export your data from Asana.')
     parser.add_argument('destination')
     args = parser.parse_args()
@@ -97,5 +98,4 @@ if __name__ == '__main__':
     asana_exporter = AsanaExporter()
     asana_exporter.export_data(args.destination)
 
-    print("Exported successfully to: "+args.destination)
-
+    print("Exported successfully to: " + args.destination)
